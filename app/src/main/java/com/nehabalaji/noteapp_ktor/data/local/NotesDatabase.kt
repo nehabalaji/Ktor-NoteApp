@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.nehabalaji.noteapp_ktor.data.local.entities.Note
 
-@Database(entities = [Note::class], version = 1)
+@Database(entities = [Note::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class NotesDatabase : RoomDatabase() {
 

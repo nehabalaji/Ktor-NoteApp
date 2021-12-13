@@ -12,6 +12,7 @@
         <entry key="app/src/main/res/drawable/ic_cross.xml" value="0.321025641025641" />
         <entry key="app/src/main/res/drawable/ic_edit.xml" value="0.321025641025641" />
         <entry key="app/src/main/res/drawable/ic_save.xml" value="0.321025641025641" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.15070921985815602" />
         <entry key="app/src/main/res/layout/edit_text_email.xml" value="0.15070921985815602" />
         <entry key="app/src/main/res/layout/fragment_add_edit_note.xml" value="0.15070921985815602" />
         <entry key="app/src/main/res/layout/fragment_auth.xml" value="0.15070921985815602" />
