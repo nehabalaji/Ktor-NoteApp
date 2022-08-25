@@ -2,13 +2,18 @@ package com.nehabalaji.noteapp_ktor.ui.notes
 
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER
+import android.graphics.Canvas
 import android.os.Bundle
 import android.view.*
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.nehabalaji.noteapp_ktor.R
 import com.nehabalaji.noteapp_ktor.adapters.NoteAdapter
 import com.nehabalaji.noteapp_ktor.other.Constants.KEY_LOGGED_IN_EMAIL
@@ -23,13 +28,13 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class NotesFragment : BaseFragment(R.layout.fragment_notes) {
+    private val viewModel: NotesViewModel by viewModels()
+    @Inject
+    lateinit var sharedPref: SharedPreferences
 
     private lateinit var noteAdapter: NoteAdapter
 
-    private val viewModel: NotesViewModel by viewModels()
-
-    @Inject
-    lateinit var sharedPref: SharedPreferences
+    private val swipingItem = MutableLiveData(false)
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -39,7 +44,6 @@ class NotesFragment : BaseFragment(R.layout.fragment_notes) {
         setHasOptionsMenu(true)
         return super.onCreateView(inflater, container, savedInstanceState)
     }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireActivity().requestedOrientation = SCREEN_ORIENTATION_USER
@@ -54,7 +58,6 @@ class NotesFragment : BaseFragment(R.layout.fragment_notes) {
             findNavController().navigate(NotesFragmentDirections.actionNotesFragmentToAddEditNoteFragment(""))
         }
     }
-
     private fun subscribeToObservers() {
         viewModel.allNotes.observe(viewLifecycleOwner, Observer {
             it?.let { event ->
@@ -84,6 +87,56 @@ class NotesFragment : BaseFragment(R.layout.fragment_notes) {
                 }
             }
         })
+        swipingItem.observe(viewLifecycleOwner, Observer {
+            swipeRefreshLayout.isEnabled = !it
+        })
+    }
+
+    private val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(
+        0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+    ) {
+        override fun onChildDraw(
+            c: Canvas,
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+            dX: Float,
+            dY: Float,
+            actionState: Int,
+            isCurrentlyActive: Boolean
+        ) {
+            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            if(actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
+                swipingItem.postValue(isCurrentlyActive)
+            }
+        }
+
+        override fun onMove(
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+            target: RecyclerView.ViewHolder
+        ): Boolean {
+            return true
+        }
+
+        override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+            val position = viewHolder.layoutPosition
+            val note = noteAdapter.notes[position]
+            viewModel.deleteNote(note.id)
+            Snackbar.make(requireView(), "Note was successfully deleted", Snackbar.LENGTH_LONG).apply {
+                setAction("Undo") {
+                    viewModel.insertNote(note)
+                    viewModel.deleteLocallyDeletedNoteID(note.id)
+                }
+                show()
+            }
+        }
+    }
+
+    private fun setupRecyclerView() = rvNotes.apply {
+        noteAdapter = NoteAdapter()
+        adapter = noteAdapter
+        layoutManager = LinearLayoutManager(requireContext())
+        ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(this)
     }
 
     private fun logout() {
@@ -97,21 +150,12 @@ class NotesFragment : BaseFragment(R.layout.fragment_notes) {
             navOptions
         )
     }
-
-    private fun setupRecyclerView() = rvNotes.apply {
-        noteAdapter = NoteAdapter()
-        adapter = noteAdapter
-        layoutManager = LinearLayoutManager(requireContext())
-    }
-
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId) {
             R.id.miLogout -> logout()
         }
         return super.onOptionsItemSelected(item)
     }
-
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.menu_notes, menu)

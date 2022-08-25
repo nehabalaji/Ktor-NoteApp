@@ -8,6 +8,8 @@ object Constants {
     const val KEY_LOGGED_IN_EMAIL = "KEY_LOGGED_IN_EMAIL"
     const val KEY_PASSWORD = "KEY_PASSWORD"
 
+    const val DEFAULT_NOTE_COLOR = "FFA500"
+
     const val NO_EMAIL = "NO_EMAIL"
     const val NO_PASSWORD = "NO_PASSWORD"
 

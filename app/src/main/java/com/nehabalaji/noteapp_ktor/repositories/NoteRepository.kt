@@ -2,9 +2,11 @@ package com.nehabalaji.noteapp_ktor.repositories
 
 import android.app.Application
 import com.nehabalaji.noteapp_ktor.data.local.NoteDao
+import com.nehabalaji.noteapp_ktor.data.local.entities.LocallyDeletedNoteID
 import com.nehabalaji.noteapp_ktor.data.local.entities.Note
 import com.nehabalaji.noteapp_ktor.data.remote.NoteApi
 import com.nehabalaji.noteapp_ktor.data.remote.requests.AccountRequest
+import com.nehabalaji.noteapp_ktor.data.remote.requests.DeleteNoteRequest
 import com.nehabalaji.noteapp_ktor.other.Resource
 import com.nehabalaji.noteapp_ktor.other.checkForInternetConnection
 import com.nehabalaji.noteapp_ktor.other.networkBoundResource
@@ -19,6 +21,44 @@ class NoteRepository @Inject constructor(
     private val context: Application
 ) {
 
+    suspend fun insertNote(note: Note) {
+        val response = try {
+            noteApi.addNote(note)
+        } catch(e: Exception) {
+            null
+        }
+        if(response != null && response.isSuccessful) {
+            noteDao.insertNote(note.apply { isSynced = true })
+        } else {
+            noteDao.insertNote(note)
+        }
+    }
+
+    suspend fun insertNotes(notes: List<Note>) {
+        notes.forEach { insertNote(it) }
+    }
+
+    suspend fun deleteNote(noteID: String) {
+        val response = try {
+            noteApi.deleteNote(DeleteNoteRequest(noteID))
+        } catch (e: Exception) {
+            null
+        }
+        noteDao.deleteNoteById(noteID)
+        if(response == null || !response.isSuccessful) {
+            noteDao.insertLocallyDeletedNoteID(LocallyDeletedNoteID(noteID))
+        } else {
+            deleteLocallyDeletedNoteID(noteID)
+        }
+    }
+
+    suspend fun deleteLocallyDeletedNoteID(deletedNoteID: String) {
+        noteDao.deleteLocallyDeletedNoteID(deletedNoteID)
+    }
+
+
+    suspend fun getNoteById(noteID: String) = noteDao.getNoteById(noteID)
+
     fun getAllNotes(): Flow<Resource<List<Note>>> {
         return networkBoundResource(
             query = {
@@ -29,7 +69,7 @@ class NoteRepository @Inject constructor(
             },
             saveFetchResult = { response ->
                 response.body()?.let {
-                    // TODO: insert notes in database
+                    insertNotes(it)
                 }
             },
             shouldFetch = {
