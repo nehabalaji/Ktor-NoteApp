@@ -6,6 +6,7 @@ import com.nehabalaji.noteapp_ktor.data.local.entities.LocallyDeletedNoteID
 import com.nehabalaji.noteapp_ktor.data.local.entities.Note
 import com.nehabalaji.noteapp_ktor.data.remote.NoteApi
 import com.nehabalaji.noteapp_ktor.data.remote.requests.AccountRequest
+import com.nehabalaji.noteapp_ktor.data.remote.requests.AddOwnerRequest
 import com.nehabalaji.noteapp_ktor.data.remote.requests.DeleteNoteRequest
 import com.nehabalaji.noteapp_ktor.other.Resource
 import com.nehabalaji.noteapp_ktor.other.checkForInternetConnection
@@ -59,6 +60,18 @@ class NoteRepository @Inject constructor(
         noteDao.deleteLocallyDeletedNoteID(deletedNoteID)
     }
 
+    suspend fun addOwnerToNote(owner: String, noteID: String) = withContext(Dispatchers.IO) {
+        try {
+            val response = noteApi.addOwnerToNote(AddOwnerRequest(owner, noteID))
+            if(response.isSuccessful && response.body()!!.successful) {
+                Resource.success(response.body()?.message)
+            } else {
+                Resource.error(response.body()?.message ?: response.message(), null)
+            }
+        } catch(e: Exception) {
+            Resource.error("Couldn't connect to the servers. Check your internet connection", null)
+        }
+    }
 
     suspend fun getNoteById(noteID: String) = noteDao.getNoteById(noteID)
 
